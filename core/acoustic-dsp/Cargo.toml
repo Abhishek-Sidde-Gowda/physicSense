@@ -1,0 +1,15 @@
+[package]
+name    = "acoustic-dsp"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rustfft     = { workspace = true }
+num-complex = { workspace = true }
+ndarray     = { workspace = true }
+serde       = { workspace = true }
+thiserror   = { workspace = true }
+anyhow      = { workspace = true }
+
+[dev-dependencies]
+approx = "0.5"
