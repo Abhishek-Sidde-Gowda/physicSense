@@ -1,0 +1,19 @@
+[package]
+name    = "fusion"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+passive-pcl  = { path = "../core/passive-pcl" }
+acoustic-dsp = { path = "../core/acoustic-dsp" }
+neuromotor   = { path = "../core/neuromotor" }
+num-complex  = { workspace = true }
+ndarray      = { workspace = true }
+serde        = { workspace = true }
+serde_json   = { workspace = true }
+thiserror    = { workspace = true }
+anyhow       = { workspace = true }
+wasm-bindgen = { workspace = true }
