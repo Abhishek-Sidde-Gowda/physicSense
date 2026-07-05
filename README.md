@@ -1,6 +1,6 @@
 # PhysicSense
 
-**Passive multi-modal ambient sensing — browser-native, zero hardware required.**
+**Passive multi-modal ambient sensing - browser-native, zero hardware required.**
 
 PhysicSense turns ambient WiFi signals + your device's speaker/microphone into a clinical-grade sensing system. No ESP32. No transmitter. No cloud.
 
