@@ -17,15 +17,7 @@ PhysicSense turns ambient WiFi signals + your device's speaker/microphone into a
 
 ## Architecture
 
-```
-Passive bistatic WiFi (PCL)      Acoustic FMCW (18–22 kHz)      Neuromotor biomarkers
-  ↓ cross-correlation                ↓ beat spectrum + TDOA           ↓ bandpass + FFT
-  ↓ range-Doppler map                ↓ cm-accurate position           ↓ UPDRS proxy score
-                     ↘                      ↓                      ↙
-                        Unified inference engine (Rust → WASM)
-                     ↙               ↓                      ↘
-          navigator.physicSense    Live dashboard        Federated mesh
-```
+![PhysicSense architecture](docs/assets/architecture.svg)
 
 ## Core modules
 
