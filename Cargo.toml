@@ -4,6 +4,7 @@ members = [
     "core/acoustic-dsp",
     "core/neuromotor",
     "fusion",
+    "federated",
 ]
 resolver = "2"
 
