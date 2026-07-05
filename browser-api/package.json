@@ -1,0 +1,12 @@
+{
+  "name": "@physicSense/browser-api",
+  "version": "0.1.0",
+  "description": "navigator.physicSense Web API spec and polyfill",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "scripts": {
+    "test": "node --test src/tests/",
+    "lint": "npx tsc --noEmit"
+  },
+  "license": "MIT"
+}
