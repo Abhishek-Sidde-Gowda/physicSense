@@ -1,0 +1,9 @@
+{
+  "name": "com.physicSense.native",
+  "description": "PhysicSense native host — opens WiFi adapter in monitor mode and streams IQ frames",
+  "path": "/usr/local/bin/physicsense-native",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://YOUR_EXTENSION_ID_HERE/"
+  ]
+}
