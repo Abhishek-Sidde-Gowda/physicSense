@@ -1,0 +1,11 @@
+{
+  "name": "@physicSense/dashboard",
+  "version": "0.1.0",
+  "description": "PhysicSense live 3-D sensing dashboard",
+  "type": "module",
+  "scripts": {
+    "dev": "npx serve public -p 3000",
+    "build": "echo 'Static build — copy public/ to any web server'"
+  },
+  "license": "MIT"
+}

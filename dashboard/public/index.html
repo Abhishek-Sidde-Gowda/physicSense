@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PhysicSense — Live Dashboard</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0f1117;
+    --bg2:      #161b27;
+    --bg3:      #1e2535;
+    --border:   #2a3350;
+    --accent:   #3b82f6;
+    --accent2:  #60a5fa;
+    --green:    #22c55e;
+    --amber:    #f59e0b;
+    --red:      #ef4444;
+    --text:     #e2e8f0;
+    --muted:    #64748b;
+    --font:     'Inter', system-ui, sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    height: 100vh;
+    display: grid;
+    grid-template-rows: 52px 1fr;
+    grid-template-columns: 1fr 320px;
+    grid-template-areas:
+      "header header"
+      "scene  sidebar";
+    overflow: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    grid-area: header;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 16px;
+  }
+  .logo { font-size: 15px; font-weight: 700; color: var(--accent2); letter-spacing: .5px; }
+  .logo span { color: var(--muted); font-weight: 400; }
+  .pill {
+    font-size: 11px; font-weight: 600; padding: 3px 10px;
+    border-radius: 20px; letter-spacing: .4px;
+  }
+  .pill-live  { background: rgba(34,197,94,.15); color: var(--green); border: 1px solid rgba(34,197,94,.3); }
+  .pill-demo  { background: rgba(245,158,11,.15); color: var(--amber); border: 1px solid rgba(245,158,11,.3); }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .ws-status { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+  .ws-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .ws-dot.connected { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .ws-dot.demo      { background: var(--amber); }
+  .btn {
+    font-size: 12px; font-weight: 600; padding: 5px 14px;
+    border-radius: 6px; border: 1px solid var(--border);
+    background: var(--bg3); color: var(--text);
+    cursor: pointer; transition: background .15s;
+  }
+  .btn:hover { background: var(--border); }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent2); }
+
+  /* ── 3-D SCENE ── */
+  #scene {
+    grid-area: scene;
+    position: relative;
+    overflow: hidden;
+  }
+  #three-canvas { width: 100%; height: 100%; display: block; }
+  .scene-overlay {
+    position: absolute; bottom: 16px; left: 16px;
+    display: flex; gap: 8px;
+  }
+  .scene-tag {
+    font-size: 10px; font-weight: 600; padding: 4px 9px;
+    background: rgba(15,17,23,.75); border: 1px solid var(--border);
+    border-radius: 5px; color: var(--muted); backdrop-filter: blur(4px);
+  }
+  .scene-tag b { color: var(--text); }
+
+  /* ── SIDEBAR ── */
+  aside {
+    grid-area: sidebar;
+    background: var(--bg2);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel {
+    border-bottom: 1px solid var(--border);
+    padding: 14px 16px;
+  }
+  .panel-title {
+    font-size: 10px; font-weight: 700; color: var(--muted);
+    letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px;
+  }
+
+  /* Vitals */
+  .vitals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .vital-card {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px;
+  }
+  .vital-label { font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+  .vital-value { font-size: 22px; font-weight: 700; line-height: 1; }
+  .vital-unit  { font-size: 11px; color: var(--muted); margin-left: 2px; }
+  .vital-bar {
+    height: 3px; border-radius: 2px; margin-top: 6px;
+    background: var(--border); overflow: hidden;
+  }
+  .vital-bar-fill { height: 100%; border-radius: 2px; transition: width .4s; }
+
+  /* Tremor */
+  .tremor-class {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+  }
+  .tremor-badge {
+    font-size: 12px; font-weight: 700; padding: 4px 12px;
+    border-radius: 20px;
+  }
+  .badge-none          { background: rgba(100,116,139,.15); color: var(--muted); }
+  .badge-physiological { background: rgba(59,130,246,.15);  color: var(--accent2); }
+  .badge-essential     { background: rgba(245,158,11,.15);  color: var(--amber); }
+  .badge-parkinsonian  { background: rgba(239,68,68,.15);   color: var(--red); }
+  .badge-indeterminate { background: rgba(100,116,139,.15); color: var(--muted); }
+  .tremor-hz { font-size: 11px; color: var(--muted); }
+
+  .band-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .band-name { font-size: 10px; color: var(--muted); width: 80px; flex-shrink: 0; }
+  .band-track { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .band-fill  { height: 100%; border-radius: 3px; transition: width .3s; }
+  .band-pct   { font-size: 10px; color: var(--muted); width: 32px; text-align: right; }
+
+  /* UPDRS */
+  .updrs-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .updrs-score {
+    font-size: 32px; font-weight: 800;
+    transition: color .3s;
+  }
+  .updrs-label { font-size: 11px; color: var(--muted); }
+  .updrs-track {
+    height: 8px; border-radius: 4px; overflow: hidden;
+    background: linear-gradient(to right, #22c55e 0%, #f59e0b 50%, #ef4444 100%);
+    position: relative; margin-bottom: 4px;
+  }
+  .updrs-marker {
+    position: absolute; top: -3px; width: 14px; height: 14px;
+    border-radius: 50%; background: #fff; border: 2px solid var(--bg);
+    transform: translateX(-50%); transition: left .4s;
+  }
+  .updrs-flag {
+    font-size: 11px; font-weight: 600; padding: 5px 10px;
+    border-radius: 6px; text-align: center; display: none;
+    background: rgba(239,68,68,.15); color: var(--red);
+    border: 1px solid rgba(239,68,68,.3);
+  }
+  .updrs-flag.visible { display: block; }
+
+  /* Gait */
+  .gait-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .gait-item { }
+  .gait-label { font-size: 10px; color: var(--muted); margin-bottom: 2px; }
+  .gait-value { font-size: 16px; font-weight: 700; }
+  .gait-unit  { font-size: 10px; color: var(--muted); }
+
+  /* Timeline canvas */
+  .timeline-wrap { padding: 14px 16px; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .timeline-wrap .panel-title { flex-shrink: 0; margin-bottom: 8px; }
+  #timeline-canvas { width: 100%; flex: 1; min-height: 0; border-radius: 6px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">PhysicSense <span>/ dashboard</span></div>
+  <span class="pill pill-demo" id="mode-pill">DEMO MODE</span>
+  <div class="header-right">
+    <div class="ws-status">
+      <div class="ws-dot demo" id="ws-dot"></div>
+      <span id="ws-label">simulated data</span>
+    </div>
+    <button class="btn" id="btn-connect">Connect WebSocket</button>
+    <button class="btn btn-primary" id="btn-demo">Restart Demo</button>
+  </div>
+</header>
+
+<main id="scene">
+  <canvas id="three-canvas"></canvas>
+  <div class="scene-overlay">
+    <div class="scene-tag">Range: <b id="tag-range">—</b> m</div>
+    <div class="scene-tag">Velocity: <b id="tag-vel">—</b> m/s</div>
+    <div class="scene-tag">Position: <b id="tag-pos">—</b></div>
+  </div>
+</main>
+
+<aside>
+
+  <!-- VITALS -->
+  <div class="panel">
+    <div class="panel-title">Vital Signs</div>
+    <div class="vitals-grid">
+      <div class="vital-card">
+        <div class="vital-label">Breathing</div>
+        <div><span class="vital-value" id="v-breath">—</span><span class="vital-unit">bpm</span></div>
+        <div class="vital-bar"><div class="vital-bar-fill" id="bar-breath" style="background:var(--accent);width:0%"></div></div>
+      </div>
+      <div class="vital-card">
+        <div class="vital-label">Heart Rate</div>
+        <div><span class="vital-value" id="v-hr">—</span><span class="vital-unit">bpm</span></div>
+        <div class="vital-bar"><div class="vital-bar-fill" id="bar-hr" style="background:var(--red);width:0%"></div></div>
+      </div>
+      <div class="vital-card">
+        <div class="vital-label">Range</div>
+        <div><span class="vital-value" id="v-range">—</span><span class="vital-unit">m</span></div>
+        <div class="vital-bar"><div class="vital-bar-fill" id="bar-range" style="background:var(--green);width:0%"></div></div>
+      </div>
+      <div class="vital-card">
+        <div class="vital-label">Velocity</div>
+        <div><span class="vital-value" id="v-vel">—</span><span class="vital-unit">m/s</span></div>
+        <div class="vital-bar"><div class="vital-bar-fill" id="bar-vel" style="background:var(--amber);width:0%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TREMOR -->
+  <div class="panel">
+    <div class="panel-title">Neuromotor — Tremor</div>
+    <div class="tremor-class">
+      <span class="tremor-badge badge-none" id="tremor-badge">None</span>
+      <span class="tremor-hz" id="tremor-hz">0 Hz</span>
+    </div>
+    <div class="band-row">
+      <span class="band-name">Parkinsonian</span>
+      <div class="band-track"><div class="band-fill" id="band-park" style="background:var(--red);width:0%"></div></div>
+      <span class="band-pct" id="pct-park">0%</span>
+    </div>
+    <div class="band-row">
+      <span class="band-name">Essential</span>
+      <div class="band-track"><div class="band-fill" id="band-ess" style="background:var(--amber);width:0%"></div></div>
+      <span class="band-pct" id="pct-ess">0%</span>
+    </div>
+    <div class="band-row">
+      <span class="band-name">Physiological</span>
+      <div class="band-track"><div class="band-fill" id="band-phys" style="background:var(--accent);width:0%"></div></div>
+      <span class="band-pct" id="pct-phys">0%</span>
+    </div>
+  </div>
+
+  <!-- UPDRS -->
+  <div class="panel">
+    <div class="panel-title">UPDRS Proxy Score</div>
+    <div class="updrs-row">
+      <div>
+        <div class="updrs-score" id="updrs-score" style="color:var(--green)">0.0</div>
+        <div class="updrs-label">out of 8.0 — screening only</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:10px;color:var(--muted)">Tremor</div>
+        <div style="font-size:14px;font-weight:700" id="updrs-tremor">0.0</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">Gait</div>
+        <div style="font-size:14px;font-weight:700" id="updrs-gait">0.0</div>
+      </div>
+    </div>
+    <div class="updrs-track"><div class="updrs-marker" id="updrs-marker" style="left:0%"></div></div>
+    <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-bottom:8px">
+      <span>0 Normal</span><span>4 Moderate</span><span>8 Severe</span>
+    </div>
+    <div class="updrs-flag" id="updrs-flag">⚠ Flagged for clinical review</div>
+  </div>
+
+  <!-- GAIT -->
+  <div class="panel">
+    <div class="panel-title">Gait Analysis</div>
+    <div class="gait-grid">
+      <div class="gait-item">
+        <div class="gait-label">Cadence</div>
+        <div><span class="gait-value" id="g-cadence">—</span> <span class="gait-unit">spm</span></div>
+      </div>
+      <div class="gait-item">
+        <div class="gait-label">Asymmetry</div>
+        <div><span class="gait-value" id="g-asym">—</span> <span class="gait-unit">AI</span></div>
+      </div>
+      <div class="gait-item">
+        <div class="gait-label">Stride CV</div>
+        <div><span class="gait-value" id="g-cv">—</span> <span class="gait-unit">%</span></div>
+      </div>
+      <div class="gait-item">
+        <div class="gait-label">FOG Risk</div>
+        <div><span class="gait-value" id="g-fog">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TREMOR TIMELINE -->
+  <div class="timeline-wrap">
+    <div class="panel-title">Tremor timeline (60 s)</div>
+    <canvas id="timeline-canvas"></canvas>
+  </div>
+
+</aside>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js"
+  }
+}
+</script>
+<script type="module" src="dashboard.js"></script>
+</body>
+</html>
