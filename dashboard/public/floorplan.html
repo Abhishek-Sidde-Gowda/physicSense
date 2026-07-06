@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PhysicSense — Building Occupancy</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:     #0f1117;
+    --bg2:    #161b27;
+    --bg3:    #1e2535;
+    --border: #2a3350;
+    --accent: #3b82f6;
+    --green:  #22c55e;
+    --amber:  #f59e0b;
+    --red:    #ef4444;
+    --text:   #e2e8f0;
+    --muted:  #64748b;
+  }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    height: 100vh;
+    display: grid;
+    grid-template-rows: 52px 1fr;
+    grid-template-columns: 1fr 260px;
+    grid-template-areas: "header header" "map sidebar";
+    overflow: hidden;
+  }
+
+  /* Header */
+  header {
+    grid-area: header;
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 20px; gap: 14px;
+  }
+  .logo { font-size: 15px; font-weight: 700; color: #60a5fa; }
+  .logo span { color: var(--muted); font-weight: 400; }
+  .pill { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+  .pill-live { background: rgba(34,197,94,.15); color: var(--green); border: 1px solid rgba(34,197,94,.3); }
+  .pill-demo { background: rgba(245,158,11,.15); color: var(--amber); border: 1px solid rgba(245,158,11,.3); }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .ws-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); }
+  .ws-dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .total-badge {
+    font-size: 13px; font-weight: 700; padding: 4px 14px;
+    background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+  }
+  .total-badge b { color: var(--accent); font-size: 18px; }
+  .btn {
+    font-size: 12px; font-weight: 600; padding: 5px 14px;
+    border-radius: 6px; border: 1px solid var(--border);
+    background: var(--bg3); color: var(--text); cursor: pointer;
+  }
+  .btn:hover { background: var(--border); }
+  .nav-link { font-size: 12px; color: var(--muted); text-decoration: none; }
+  .nav-link:hover { color: var(--text); }
+
+  /* Map area */
+  #map-area {
+    grid-area: map;
+    position: relative; overflow: hidden; background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+  }
+  #floor-canvas { max-width: 100%; max-height: 100%; }
+
+  /* Sidebar */
+  aside {
+    grid-area: sidebar;
+    background: var(--bg2); border-left: 1px solid var(--border);
+    overflow-y: auto; padding: 14px 14px;
+  }
+  .section-title {
+    font-size: 10px; font-weight: 700; color: var(--muted);
+    letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px;
+  }
+  .zone-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 10px; border-radius: 7px; margin-bottom: 5px;
+    background: var(--bg3); border: 1px solid var(--border);
+    cursor: pointer; transition: border-color .15s;
+  }
+  .zone-row:hover { border-color: var(--accent); }
+  .zone-row.occupied { border-color: rgba(59,130,246,.5); }
+  .zone-name { font-size: 12px; font-weight: 500; }
+  .zone-count {
+    font-size: 14px; font-weight: 700; min-width: 22px; text-align: center;
+    color: var(--muted);
+  }
+  .zone-count.has-people { color: var(--accent); }
+
+  .divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+  .section-title.mt { margin-top: 4px; }
+  .person-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; border-radius: 7px; margin-bottom: 4px;
+    background: var(--bg3); border: 1px solid var(--border);
+  }
+  .person-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .person-info { flex: 1; }
+  .person-id   { font-size: 11px; font-weight: 600; }
+  .person-zone { font-size: 10px; color: var(--muted); }
+  .person-vel  { font-size: 10px; color: var(--muted); text-align: right; }
+
+  .node-row {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; color: var(--muted); margin-bottom: 5px;
+  }
+  .node-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">PhysicSense <span>/ building map</span></div>
+  <span class="pill pill-demo" id="mode-pill">DEMO</span>
+  <div class="total-badge">People detected: <b id="total-count">0</b></div>
+  <div class="header-right">
+    <div class="ws-dot" id="ws-dot"></div>
+    <button class="btn" id="btn-connect">Connect Hub</button>
+    <a class="nav-link" href="index.html">← 3D View</a>
+  </div>
+</header>
+
+<main id="map-area">
+  <canvas id="floor-canvas"></canvas>
+</main>
+
+<aside>
+  <div class="section-title">Zone Occupancy</div>
+  <div id="zone-list"></div>
+
+  <div class="divider"></div>
+  <div class="section-title mt">Tracked Persons</div>
+  <div id="person-list"></div>
+
+  <div class="divider"></div>
+  <div class="section-title mt">Active Nodes</div>
+  <div id="node-list"></div>
+</aside>
+
+<script type="module">
+// ── Floor plan zone definitions (building metres, origin = bottom-left) ───
+// Must match tracking/hub.js ZONES
+const ZONES = [
+  { id: 'z1',  name: 'Entrance Hall', x: 0,  y: 0,  w: 8,  h: 5  },
+  { id: 'z2',  name: 'Corridor A',    x: 0,  y: 5,  w: 20, h: 3  },
+  { id: 'z3',  name: 'Room 101',      x: 0,  y: 8,  w: 6,  h: 6  },
+  { id: 'z4',  name: 'Room 102',      x: 7,  y: 8,  w: 6,  h: 6  },
+  { id: 'z5',  name: 'Room 103',      x: 14, y: 8,  w: 6,  h: 6  },
+  { id: 'z6',  name: 'Corridor B',    x: 0,  y: 14, w: 20, h: 3  },
+  { id: 'z7',  name: 'Room 201',      x: 0,  y: 17, w: 6,  h: 6  },
+  { id: 'z8',  name: 'Room 202',      x: 7,  y: 17, w: 6,  h: 6  },
+  { id: 'z9',  name: 'Room 203',      x: 14, y: 17, w: 6,  h: 6  },
+  { id: 'z10', name: 'Stairwell',     x: 21, y: 5,  w: 4,  h: 18 },
+];
+
+const BUILDING_W = 25;
+const BUILDING_H = 23;
+
+// Distinct colours for person tracks (cycling)
+const PERSON_COLORS = [
+  '#3b82f6','#22c55e','#f59e0b','#ec4899','#a78bfa',
+  '#14b8a6','#f97316','#e879f9','#67e8f9','#bef264',
+];
+const personColor = id => PERSON_COLORS[(id - 1) % PERSON_COLORS.length];
+
+// ── Canvas ────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('floor-canvas');
+const ctx    = canvas.getContext('2d');
+
+let scale  = 1;
+let offX   = 0;
+let offY   = 0;
+
+function fitCanvas() {
+  const area = document.getElementById('map-area');
+  const aw   = area.clientWidth  - 32;
+  const ah   = area.clientHeight - 32;
+  scale = Math.min(aw / BUILDING_W, ah / BUILDING_H);
+  canvas.width  = BUILDING_W * scale;
+  canvas.height = BUILDING_H * scale;
+}
+
+function toCanvas(mx, my) {
+  return [mx * scale, (BUILDING_H - my - 0) * scale];
+}
+
+// ── Draw floor plan ───────────────────────────────────────────────────────
+function drawFloorPlan(occupancy) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Background
+  ctx.fillStyle = '#0a0e18';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ZONES.forEach(z => {
+    const [cx, cy] = toCanvas(z.x, z.y + z.h);
+    const pw = z.w * scale;
+    const ph = z.h * scale;
+    const count = occupancy[z.id] ?? 0;
+
+    // Zone fill — heat up with occupancy
+    const heat = Math.min(count / 4, 1);
+    if (heat > 0) {
+      ctx.fillStyle = `rgba(59,130,246,${0.08 + heat * 0.18})`;
+    } else {
+      ctx.fillStyle = '#161b27';
+    }
+    ctx.fillRect(cx, cy, pw, ph);
+
+    // Border
+    ctx.strokeStyle = count > 0 ? '#3b82f6' : '#2a3350';
+    ctx.lineWidth   = count > 0 ? 1.5 : 1;
+    ctx.strokeRect(cx, cy, pw, ph);
+
+    // Zone name
+    ctx.fillStyle = count > 0 ? '#e2e8f0' : '#64748b';
+    ctx.font      = `${Math.max(9, scale * 0.7)}px system-ui`;
+    ctx.textAlign = 'center';
+    ctx.fillText(z.name, cx + pw / 2, cy + ph / 2 - scale * 0.3);
+
+    // Occupancy count bubble
+    if (count > 0) {
+      const bx = cx + pw - 10;
+      const by = cy + 10;
+      ctx.beginPath();
+      ctx.arc(bx, by, 9, 0, Math.PI * 2);
+      ctx.fillStyle = '#3b82f6';
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font      = 'bold 10px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText(count, bx, by + 3.5);
+    }
+  });
+}
+
+// ── Draw persons ──────────────────────────────────────────────────────────
+function drawPersons(persons) {
+  persons.forEach(p => {
+    const color = personColor(p.id);
+
+    // Trail
+    if (p.trail && p.trail.length > 1) {
+      ctx.beginPath();
+      p.trail.forEach((pt, i) => {
+        const [cx, cy] = toCanvas(pt.x, pt.y);
+        i === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+      });
+      ctx.strokeStyle = color + '55';
+      ctx.lineWidth   = 1.5;
+      ctx.stroke();
+    }
+
+    // Person dot
+    const [cx, cy] = toCanvas(p.x, p.y);
+    ctx.beginPath();
+    ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth   = 1.5;
+    ctx.stroke();
+
+    // ID label
+    ctx.fillStyle   = '#fff';
+    ctx.font        = 'bold 9px system-ui';
+    ctx.textAlign   = 'center';
+    ctx.fillText(`P${p.id}`, cx, cy + 3.5);
+
+    // Velocity arrow
+    const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+    if (speed > 0.05) {
+      const ax = (p.vx / speed) * 14;
+      const ay = -(p.vy / speed) * 14;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + ax, cy + ay);
+      ctx.strokeStyle = color;
+      ctx.lineWidth   = 1.5;
+      ctx.stroke();
+    }
+  });
+}
+
+// ── Update sidebar ────────────────────────────────────────────────────────
+function updateSidebar(persons, occupancy, nodes) {
+  // Zone list
+  const zoneList = document.getElementById('zone-list');
+  zoneList.innerHTML = '';
+  ZONES.forEach(z => {
+    const count = occupancy[z.id] ?? 0;
+    const row   = document.createElement('div');
+    row.className = `zone-row${count > 0 ? ' occupied' : ''}`;
+    row.innerHTML = `
+      <span class="zone-name">${z.name}</span>
+      <span class="zone-count${count > 0 ? ' has-people' : ''}">${count}</span>
+    `;
+    zoneList.appendChild(row);
+  });
+
+  // Person list
+  const personList = document.getElementById('person-list');
+  personList.innerHTML = '';
+  if (persons.length === 0) {
+    personList.innerHTML = '<div style="font-size:11px;color:var(--muted);padding:6px 10px">No persons detected</div>';
+  }
+  persons.forEach(p => {
+    const color    = personColor(p.id);
+    const speed    = Math.sqrt(p.vx * p.vx + p.vy * p.vy).toFixed(2);
+    const zoneName = ZONES.find(z => z.id === p.zoneId)?.name ?? p.zoneId;
+    const row      = document.createElement('div');
+    row.className  = 'person-row';
+    row.innerHTML  = `
+      <div class="person-dot" style="background:${color}"></div>
+      <div class="person-info">
+        <div class="person-id">Person ${p.id}</div>
+        <div class="person-zone">${zoneName}</div>
+      </div>
+      <div class="person-vel">${speed} m/s</div>
+    `;
+    personList.appendChild(row);
+  });
+
+  // Node list
+  const nodeList = document.getElementById('node-list');
+  nodeList.innerHTML = '';
+  if (nodes.length === 0) {
+    nodeList.innerHTML = '<div style="font-size:11px;color:var(--muted);padding:4px 10px">No nodes connected</div>';
+  }
+  nodes.forEach(n => {
+    const row = document.createElement('div');
+    row.className = 'node-row';
+    row.innerHTML = `<div class="node-dot"></div>${n}`;
+    nodeList.appendChild(row);
+  });
+
+  document.getElementById('total-count').textContent = persons.length;
+}
+
+// ── Full render ───────────────────────────────────────────────────────────
+function render(persons, occupancy, nodes) {
+  fitCanvas();
+  drawFloorPlan(occupancy);
+  drawPersons(persons);
+  updateSidebar(persons, occupancy, nodes);
+}
+
+// ── Demo data simulation ───────────────────────────────────────────────────
+let demoPersons = [
+  { id: 1, x: 4, y: 2,  vx: 0.2,  vy: 0.1, zoneId: 'z1', trail: [] },
+  { id: 2, x: 3, y: 10, vx: 0,    vy: 0,   zoneId: 'z3', trail: [] },
+  { id: 3, x: 9, y: 6,  vx: 0.3,  vy: 0,   zoneId: 'z2', trail: [] },
+  { id: 4, x: 2, y: 20, vx: -0.1, vy: 0.2, zoneId: 'z7', trail: [] },
+];
+
+function demoTick() {
+  const now = Date.now();
+  demoPersons.forEach(p => {
+    p.x += p.vx * 0.1 + (Math.random() - 0.5) * 0.05;
+    p.y += p.vy * 0.1 + (Math.random() - 0.5) * 0.05;
+    // Bounce off building walls
+    if (p.x < 0 || p.x > BUILDING_W) p.vx *= -1;
+    if (p.y < 0 || p.y > BUILDING_H) p.vy *= -1;
+    p.x = Math.max(0.5, Math.min(BUILDING_W - 0.5, p.x));
+    p.y = Math.max(0.5, Math.min(BUILDING_H - 0.5, p.y));
+    p.trail.push({ x: p.x, y: p.y, t: now });
+    if (p.trail.length > 20) p.trail.shift();
+    // Update zone
+    for (const z of ZONES) {
+      if (p.x >= z.x && p.x < z.x + z.w && p.y >= z.y && p.y < z.y + z.h) {
+        p.zoneId = z.id; break;
+      }
+    }
+  });
+
+  const occupancy = {};
+  ZONES.forEach(z => { occupancy[z.id] = 0; });
+  demoPersons.forEach(p => { if (occupancy[p.zoneId] !== undefined) occupancy[p.zoneId]++; });
+
+  render(demoPersons, occupancy, ['demo-node-1']);
+}
+
+let demoInterval = setInterval(demoTick, 100);
+
+// ── WebSocket connection ───────────────────────────────────────────────────
+document.getElementById('btn-connect').addEventListener('click', () => {
+  const url = prompt('Hub WebSocket URL', 'ws://localhost:8766');
+  if (!url) return;
+
+  clearInterval(demoInterval);
+  const ws = new WebSocket(url);
+
+  ws.onopen = () => {
+    document.getElementById('ws-dot').className   = 'ws-dot live';
+    document.getElementById('mode-pill').textContent = 'LIVE';
+    document.getElementById('mode-pill').className   = 'pill pill-live';
+  };
+
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'building_state') {
+      render(msg.persons, msg.occupancy, msg.nodes);
+    }
+  };
+
+  ws.onclose = () => {
+    document.getElementById('ws-dot').className      = 'ws-dot';
+    document.getElementById('mode-pill').textContent = 'DEMO';
+    document.getElementById('mode-pill').className   = 'pill pill-demo';
+    demoInterval = setInterval(demoTick, 100);
+  };
+});
+
+// Initial render
+fitCanvas();
+demoTick();
+window.addEventListener('resize', () => { fitCanvas(); demoTick(); });
+</script>
+</body>
+</html>

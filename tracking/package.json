@@ -1,0 +1,14 @@
+{
+  "name": "@physicSense/tracking-hub",
+  "version": "0.1.0",
+  "description": "PhysicSense multi-zone building occupancy hub",
+  "type": "module",
+  "main": "hub.js",
+  "scripts": {
+    "start": "node hub.js"
+  },
+  "dependencies": {
+    "ws": "^8.17.0"
+  },
+  "license": "MIT"
+}
