@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PhysicSense — Interactive Demo</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117; --bg2: #161b27; --bg3: #1e2535; --border: #2a3350;
+    --accent: #3b82f6; --green: #22c55e; --amber: #f59e0b; --red: #ef4444;
+    --text: #e2e8f0; --muted: #64748b;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; }
+
+  header {
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    padding: 16px 32px; display: flex; align-items: center; gap: 16px;
+  }
+  .logo { font-size: 18px; font-weight: 800; color: #60a5fa; }
+  .logo span { color: var(--muted); font-weight: 400; font-size: 14px; }
+  .tagline { font-size: 13px; color: var(--muted); margin-left: auto; }
+
+  .hero {
+    max-width: 860px; margin: 48px auto 0; padding: 0 24px; text-align: center;
+  }
+  .hero h1 { font-size: 36px; font-weight: 800; line-height: 1.15; margin-bottom: 14px; }
+  .hero h1 span { color: var(--accent); }
+  .hero p { font-size: 16px; color: var(--muted); line-height: 1.7; max-width: 600px; margin: 0 auto 32px; }
+
+  .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 48px; }
+  .btn {
+    padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;
+    cursor: pointer; border: 1px solid var(--border); text-decoration: none;
+    display: inline-block; transition: background .15s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-primary:hover { background: #2563eb; }
+  .btn-ghost { background: var(--bg3); color: var(--text); }
+  .btn-ghost:hover { background: var(--border); }
+
+  /* Demo panels */
+  .demo-grid {
+    max-width: 860px; margin: 0 auto 64px; padding: 0 24px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  }
+  @media (max-width: 600px) { .demo-grid { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px;
+  }
+  .panel h3 { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 16px; }
+
+  /* Signal visualiser */
+  canvas.signal { width: 100%; height: 80px; border-radius: 6px; background: var(--bg3); display: block; }
+
+  /* Tremor result */
+  .tremor-result { display: flex; flex-direction: column; gap: 10px; }
+  .band-row { display: flex; align-items: center; gap: 10px; }
+  .band-label { font-size: 11px; color: var(--muted); width: 90px; flex-shrink: 0; }
+  .band-track { flex: 1; height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
+  .band-fill { height: 100%; border-radius: 4px; transition: width .4s; }
+  .band-pct { font-size: 11px; color: var(--muted); width: 36px; text-align: right; }
+  .class-badge {
+    display: inline-block; padding: 5px 14px; border-radius: 20px;
+    font-size: 13px; font-weight: 700; margin-top: 8px;
+  }
+
+  /* UPDRS */
+  .updrs-num { font-size: 48px; font-weight: 800; line-height: 1; }
+  .updrs-track {
+    height: 10px; border-radius: 5px; margin: 12px 0 4px;
+    background: linear-gradient(to right, #22c55e, #f59e0b, #ef4444);
+    position: relative;
+  }
+  .updrs-marker {
+    position: absolute; top: -4px; width: 18px; height: 18px;
+    border-radius: 50%; background: #fff; border: 3px solid var(--bg);
+    transform: translateX(-50%); transition: left .4s;
+  }
+
+  /* Controls */
+  .controls { max-width: 860px; margin: 0 auto 48px; padding: 0 24px; }
+  .controls h2 { font-size: 14px; font-weight: 700; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 14px; }
+  .slider-row { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+  .slider-row label { font-size: 12px; color: var(--muted); width: 130px; flex-shrink: 0; }
+  .slider-row input[type=range] { flex: 1; accent-color: var(--accent); }
+  .slider-val { font-size: 12px; font-weight: 700; width: 48px; text-align: right; }
+
+  select.scenario {
+    background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+    padding: 8px 14px; border-radius: 8px; font-size: 13px; cursor: pointer;
+    margin-bottom: 16px;
+  }
+
+  .feature-list {
+    max-width: 860px; margin: 0 auto 64px; padding: 0 24px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+  }
+  @media (max-width: 600px) { .feature-list { grid-template-columns: 1fr; } }
+  .feature-card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px;
+  }
+  .feature-icon { font-size: 22px; margin-bottom: 8px; }
+  .feature-card h4 { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .feature-card p  { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+  footer {
+    border-top: 1px solid var(--border); padding: 24px 32px;
+    text-align: center; font-size: 12px; color: var(--muted);
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">PhysicSense <span>/ interactive demo</span></div>
+  <div class="tagline">Passive WiFi + acoustic sensing · browser-native · no hardware</div>
+</header>
+
+<section class="hero">
+  <h1>Sense the room.<br><span>No hardware required.</span></h1>
+  <p>PhysicSense turns ambient WiFi reflections and ultrasonic chirps into
+     clinical-grade motion sensing — detecting breathing, heart rate, tremor,
+     and gait from across the room.</p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="index.html">Open Live Dashboard</a>
+    <a class="btn btn-ghost" href="floorplan.html">Building Map</a>
+    <a class="btn btn-ghost" href="https://github.com/Abhishek-Sidde-Gowda/physicSense" target="_blank">GitHub</a>
+  </div>
+</section>
+
+<!-- Controls -->
+<section class="controls">
+  <h2>Simulation Controls</h2>
+  <div style="margin-bottom:12px">
+    <select class="scenario" id="scenario">
+      <option value="healthy">Scenario: Healthy subject</option>
+      <option value="physiological">Scenario: Physiological tremor</option>
+      <option value="essential">Scenario: Essential tremor</option>
+      <option value="parkinsonian">Scenario: Parkinsonian tremor</option>
+    </select>
+  </div>
+  <div class="slider-row">
+    <label>Tremor amplitude</label>
+    <input type="range" id="sl-amp" min="0" max="100" value="30">
+    <span class="slider-val" id="val-amp">30</span>
+  </div>
+  <div class="slider-row">
+    <label>Noise level</label>
+    <input type="range" id="sl-noise" min="0" max="80" value="15">
+    <span class="slider-val" id="val-noise">15</span>
+  </div>
+  <div class="slider-row">
+    <label>Subject distance (m)</label>
+    <input type="range" id="sl-dist" min="10" max="400" value="150">
+    <span class="slider-val" id="val-dist">1.5</span>
+  </div>
+</section>
+
+<!-- Demo panels -->
+<div class="demo-grid">
+
+  <div class="panel">
+    <h3>Raw micro-Doppler signal</h3>
+    <canvas class="signal" id="signal-canvas"></canvas>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">
+      Simulated 1 kHz IQ magnitude — 1 s window
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Vital Signs</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Breathing</div>
+        <div style="font-size:28px;font-weight:800" id="d-breath">—</div>
+        <div style="font-size:11px;color:var(--muted)">bpm</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Heart Rate</div>
+        <div style="font-size:28px;font-weight:800" id="d-hr">—</div>
+        <div style="font-size:11px;color:var(--muted)">bpm</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Range</div>
+        <div style="font-size:28px;font-weight:800" id="d-range">—</div>
+        <div style="font-size:11px;color:var(--muted)">m</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Velocity</div>
+        <div style="font-size:28px;font-weight:800" id="d-vel">—</div>
+        <div style="font-size:11px;color:var(--muted)">m/s</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Tremor Classification</h3>
+    <div class="tremor-result">
+      <div class="band-row">
+        <span class="band-label">Parkinsonian</span>
+        <div class="band-track"><div class="band-fill" id="bp-park" style="background:var(--red);width:0%"></div></div>
+        <span class="band-pct" id="pp-park">0%</span>
+      </div>
+      <div class="band-row">
+        <span class="band-label">Essential</span>
+        <div class="band-track"><div class="band-fill" id="bp-ess" style="background:var(--amber);width:0%"></div></div>
+        <span class="band-pct" id="pp-ess">0%</span>
+      </div>
+      <div class="band-row">
+        <span class="band-label">Physiological</span>
+        <div class="band-track"><div class="band-fill" id="bp-phys" style="background:var(--accent);width:0%"></div></div>
+        <span class="band-pct" id="pp-phys">0%</span>
+      </div>
+      <div>
+        <span class="class-badge" id="class-badge" style="background:rgba(100,116,139,.15);color:var(--muted)">None</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>UPDRS Proxy Score</h3>
+    <div class="updrs-num" id="d-updrs" style="color:var(--green)">0.0</div>
+    <div style="font-size:11px;color:var(--muted)">out of 8.0 — screening only</div>
+    <div class="updrs-track"><div class="updrs-marker" id="d-marker" style="left:0%"></div></div>
+    <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted)">
+      <span>0 Normal</span><span>4 Moderate</span><span>8 Severe</span>
+    </div>
+    <div id="d-flag" style="display:none;margin-top:10px;padding:6px 12px;background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3);border-radius:6px;font-size:11px;font-weight:600">
+      ⚠ Flagged for clinical review
+    </div>
+  </div>
+
+</div>
+
+<!-- Feature cards -->
+<div class="feature-list">
+  <div class="feature-card">
+    <div class="feature-icon">📡</div>
+    <h4>Passive WiFi Radar</h4>
+    <p>Uses ambient WiFi signals as a bistatic illuminator. No transmitter — completely passive and legal everywhere.</p>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon">🔊</div>
+    <h4>Acoustic FMCW</h4>
+    <p>Emits an 18–22 kHz ultrasonic chirp via WebAudio API. 4.3 cm range resolution, 3.4 m max range.</p>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon">🧠</div>
+    <h4>Neuromotor Screening</h4>
+    <p>Classifies tremor type and outputs a proxy UPDRS score for Parkinson's disease screening — no wearable needed.</p>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon">🔒</div>
+    <h4>Federated Privacy</h4>
+    <p>DP-SGD differential privacy with (ε,δ)-accounting. Gradients shared via WebRTC — raw data never leaves the device.</p>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon">🗺️</div>
+    <h4>Building Occupancy</h4>
+    <p>Multi-node Kalman tracker assigns persistent IDs to people moving across a whole building floor plan.</p>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon">🌐</div>
+    <h4>Browser API Standard</h4>
+    <p>Proposes <code>navigator.physicSense</code> as a new Web API — like <code>navigator.mediaDevices</code> but for RF sensing.</p>
+  </div>
+</div>
+
+<footer>
+  PhysicSense · MIT License ·
+  <a href="https://github.com/Abhishek-Sidde-Gowda/physicSense">github.com/Abhishek-Sidde-Gowda/physicSense</a>
+</footer>
+
+<script type="module">
+// ── Deterministic PRNG ────────────────────────────────────────────────────
+function makePrng(seed) {
+  let s = seed >>> 0;
+  return () => { s = (Math.imul(1664525,s)+1013904223)>>>0; return s/0xffffffff*2-1; };
+}
+
+// ── Biquad IIR bandpass ───────────────────────────────────────────────────
+function biquad(sig, fc, bw, sr) {
+  const w0    = 2*Math.PI*fc/sr;
+  const alpha = Math.sin(w0)*Math.sinh(Math.log(2)/2*bw*w0/Math.sin(w0));
+  const b0=alpha, b2=-alpha, a0=1+alpha, a1=-2*Math.cos(w0), a2=1-alpha;
+  const out = new Float32Array(sig.length);
+  let x1=0,x2=0,y1=0,y2=0;
+  for (let i=0;i<sig.length;i++) {
+    const x0=sig[i], y0=(b0*x0+b2*x2-a1*y1-a2*y2)/a0;
+    out[i]=y0; x2=x1;x1=x0;y2=y1;y1=y0;
+  }
+  return out;
+}
+function power(s) { return s.reduce((a,v)=>a+v*v,0)/s.length; }
+
+// ── Scenario presets ──────────────────────────────────────────────────────
+const SCENARIOS = {
+  healthy:       { tremorHz: 0,   amp: 5,  noise: 20 },
+  physiological: { tremorHz: 10,  amp: 25, noise: 15 },
+  essential:     { tremorHz: 8,   amp: 55, noise: 15 },
+  parkinsonian:  { tremorHz: 4.5, amp: 70, noise: 10 },
+};
+
+// ── Controls ──────────────────────────────────────────────────────────────
+const slAmp   = document.getElementById('sl-amp');
+const slNoise = document.getElementById('sl-noise');
+const slDist  = document.getElementById('sl-dist');
+const scenario= document.getElementById('scenario');
+
+function syncSliders(sc) {
+  const p = SCENARIOS[sc];
+  slAmp.value   = p.amp;
+  slNoise.value = p.noise;
+  document.getElementById('val-amp').textContent   = p.amp;
+  document.getElementById('val-noise').textContent = p.noise;
+}
+scenario.addEventListener('change', () => syncSliders(scenario.value));
+slAmp.addEventListener('input',   () => document.getElementById('val-amp').textContent   = slAmp.value);
+slNoise.addEventListener('input', () => document.getElementById('val-noise').textContent = slNoise.value);
+slDist.addEventListener('input',  () => document.getElementById('val-dist').textContent  = (slDist.value/100).toFixed(2));
+
+// ── Signal canvas ─────────────────────────────────────────────────────────
+const signalCanvas = document.getElementById('signal-canvas');
+const sctx = signalCanvas.getContext('2d');
+let signalBuf = new Float32Array(200);
+
+function drawSignal() {
+  const W = signalCanvas.offsetWidth, H = 80;
+  signalCanvas.width = W; signalCanvas.height = H;
+  sctx.clearRect(0,0,W,H);
+  sctx.fillStyle = '#1e2535';
+  sctx.fillRect(0,0,W,H);
+  sctx.beginPath();
+  sctx.strokeStyle = '#3b82f6';
+  sctx.lineWidth = 1.5;
+  const step = W / signalBuf.length;
+  for (let i=0;i<signalBuf.length;i++) {
+    const x = i*step;
+    const y = H/2 - signalBuf[i]*H*0.45;
+    i===0 ? sctx.moveTo(x,y) : sctx.lineTo(x,y);
+  }
+  sctx.stroke();
+}
+
+// ── Simulation tick ───────────────────────────────────────────────────────
+let t = 0;
+const SR = 1000;
+const rng = makePrng(0xc0ffee);
+
+function tick() {
+  const sc    = scenario.value;
+  const amp   = +slAmp.value / 100;
+  const noise = +slNoise.value / 100;
+  const dist  = +slDist.value / 100;
+  const preset= SCENARIOS[sc];
+  const hz    = preset.tremorHz;
+
+  // Generate 1 s of synthetic signal
+  const N = SR;
+  const sig = new Float32Array(N);
+  for (let i=0;i<N;i++) {
+    const tremorComponent = hz > 0 ? amp * Math.sin(2*Math.PI*hz*(t+i)/SR) : 0;
+    const breathComponent = 0.15 * Math.sin(2*Math.PI*0.25*(t+i)/SR);
+    const hrComponent     = 0.05 * Math.sin(2*Math.PI*1.1*(t+i)/SR);
+    sig[i] = tremorComponent + breathComponent + hrComponent + noise*(rng());
+  }
+  t += N;
+
+  // Scroll signal buffer
+  const disp = new Float32Array(200);
+  for (let i=0;i<200;i++) disp[i] = sig[Math.floor(i*N/200)];
+  signalBuf = disp;
+  drawSignal();
+
+  // Band powers
+  const park  = biquad(sig, 4.5, 3,  SR);
+  const ess   = biquad(sig, 8,   8,  SR);
+  const phys  = biquad(sig, 10,  4,  SR);
+  const pp    = power(park), ep = power(ess), hp = power(phys);
+  const total = pp+ep+hp || 1e-9;
+  const pPark = pp/total, pEss = ep/total, pPhys = hp/total;
+
+  document.getElementById('bp-park').style.width = (pPark*100).toFixed(1)+'%';
+  document.getElementById('bp-ess').style.width  = (pEss*100).toFixed(1)+'%';
+  document.getElementById('bp-phys').style.width = (pPhys*100).toFixed(1)+'%';
+  document.getElementById('pp-park').textContent = (pPark*100).toFixed(0)+'%';
+  document.getElementById('pp-ess').textContent  = (pEss*100).toFixed(0)+'%';
+  document.getElementById('pp-phys').textContent = (pPhys*100).toFixed(0)+'%';
+
+  // Classification
+  let cls='None', clsColor='rgba(100,116,139,.15)', clsText='var(--muted)';
+  if (pPark>0.40)       { cls='Parkinsonian'; clsColor='rgba(239,68,68,.15)'; clsText='var(--red)'; }
+  else if (pEss>0.40)   { cls='Essential';    clsColor='rgba(245,158,11,.15)'; clsText='var(--amber)'; }
+  else if (pPhys>0.40)  { cls='Physiological';clsColor='rgba(59,130,246,.15)'; clsText='var(--accent)'; }
+  const badge = document.getElementById('class-badge');
+  badge.textContent = cls;
+  badge.style.background = clsColor;
+  badge.style.color = clsText;
+
+  // UPDRS
+  let tremorScore = 0;
+  if (cls==='Parkinsonian') tremorScore = 2 + 2*(pPark-0.40)/0.60;
+  else if (cls==='Essential') tremorScore = 1.5;
+  else if (cls==='Physiological') tremorScore = 0.5;
+  const gaitScore = sc==='parkinsonian' ? 1.8 : sc==='essential' ? 0.8 : 0.2;
+  const composite = Math.min(tremorScore+gaitScore, 8);
+  document.getElementById('d-updrs').textContent = composite.toFixed(1);
+  document.getElementById('d-updrs').style.color = composite>=3?'var(--red)':composite>=1.5?'var(--amber)':'var(--green)';
+  document.getElementById('d-marker').style.left = (composite/8*100).toFixed(1)+'%';
+  document.getElementById('d-flag').style.display = composite>=3?'block':'none';
+
+  // Vitals (noise-scaled)
+  const snr = 1 - noise;
+  document.getElementById('d-breath').textContent = (15 + snr*4 + (rng()*0.5)).toFixed(0);
+  document.getElementById('d-hr').textContent     = (68 + snr*8 + (rng()*1.5)).toFixed(0);
+  document.getElementById('d-range').textContent  = dist.toFixed(2);
+  document.getElementById('d-vel').textContent    = (amp*0.3 + Math.abs(rng())*0.05).toFixed(2);
+}
+
+syncSliders('healthy');
+setInterval(tick, 200);
+tick();
+</script>
+</body>
+</html>
