@@ -1,0 +1,73 @@
+{
+  "version": "1.0.0",
+  "timestamp": "2026-07-13T19:21:42.487Z",
+  "platform": "darwin",
+  "node": "v24.18.0",
+  "results": [
+    {
+      "name": "gcc_phat_n64",
+      "iters": 200,
+      "elapsed_ms": 26.69,
+      "throughput_per_s": 7493.5,
+      "latency_us": 133.4,
+      "output_sha256": "3663503800d11385c92de98fa0804e15c746bf830cd41ae4bb2438d75fa8a8bb"
+    },
+    {
+      "name": "gcc_phat_n256",
+      "iters": 20,
+      "elapsed_ms": 42.7,
+      "throughput_per_s": 468.4,
+      "latency_us": 2134.8,
+      "output_sha256": "8764050efd995fdc53ed66c31e2ee52890a3412fe4e5222c9ebe3b9167156c26"
+    },
+    {
+      "name": "peak_lag_n64",
+      "iters": 10000,
+      "elapsed_ms": 0.94,
+      "throughput_per_s": 10641128,
+      "latency_us": 0.1,
+      "output_sha256": "59e19706d51d39f66711c2653cd7eb1291c94d9b55eb14bda74ce4dc636d015a"
+    },
+    {
+      "name": "biquad_parkinsonian",
+      "iters": 1000,
+      "elapsed_ms": 5,
+      "throughput_per_s": 200026.7,
+      "latency_us": 5,
+      "output_sha256": "262c0bcf9cb1040e2684d9049fcfce7bd3b3054cb765f9811b170ebeae18968e"
+    },
+    {
+      "name": "biquad_essential",
+      "iters": 1000,
+      "elapsed_ms": 4.78,
+      "throughput_per_s": 209289,
+      "latency_us": 4.8,
+      "output_sha256": "310a937dadb91ea0ded79d2cf8b5059b6d770fc5cad86ab590548b49726d90a6"
+    },
+    {
+      "name": "band_power_n1000",
+      "iters": 50000,
+      "elapsed_ms": 301.53,
+      "throughput_per_s": 165820.2,
+      "latency_us": 6,
+      "output_sha256": "0d59c3e53c8b3ab560fe36e31690f9fe26bb8da661197ebdf6e467e4f1e1bb0b"
+    },
+    {
+      "name": "kalman_predict",
+      "iters": 100000,
+      "elapsed_ms": 2.25,
+      "throughput_per_s": 44423042.4,
+      "latency_us": 0,
+      "output_sha256": "8e45a3e26cc25529e1e7b057d262586108eb674b4e0fc4e80bdf8bbae069f3cf"
+    },
+    {
+      "name": "tremor_pipeline",
+      "iters": 500,
+      "elapsed_ms": 15.38,
+      "throughput_per_s": 32500,
+      "latency_us": 30.8,
+      "output_sha256": "ce097bfe178f33233f9ae6bb09135e8d8294edf2a5371e376b90cc2120065e44"
+    }
+  ],
+  "suite_sha256": "903cb9a8584b3e6e857db2b5535168048c0e19be47b6811d459430b842932436"
+}
