@@ -45,7 +45,7 @@ impl RangeDopplerMap {
         let fft = self.planner.plan_fft_forward(self.doppler_bins);
         let mut map = vec![vec![0.0f32; self.doppler_bins]; self.range_bins];
 
-        for r in 0..self.range_bins {
+        for (r, row) in map.iter_mut().enumerate().take(self.range_bins) {
             let mut column: Vec<Complex<f32>> = (0..self.doppler_bins)
                 .map(|d| Complex::new(self.slow_time_buffer[d][r], 0.0))
                 .collect();
@@ -54,7 +54,7 @@ impl RangeDopplerMap {
 
             let scale = 1.0 / self.doppler_bins as f32;
             for (d, c) in column.iter().enumerate() {
-                map[r][d] = c.norm() * scale;
+                row[d] = c.norm() * scale;
             }
         }
 
