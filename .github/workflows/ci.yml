@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # ── Rust workspace ─────────────────────────────────────────────────────
+  rust:
+    name: Rust build & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build workspace
+        run: cargo build --workspace
+
+      - name: Run tests
+        run: cargo test --workspace
+
+      - name: Clippy (warnings as errors)
+        run: cargo clippy --workspace -- -D warnings
+
+  # ── Benchmarks + proof hashes ──────────────────────────────────────────
+  benchmarks:
+    name: Benchmark proof
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run benchmark suite
+        run: node benchmarks/bench.js
+
+      - name: Upload proof artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-proof
+          path: |
+            benchmarks/results.json
+            benchmarks/PROOF.md
+
+  # ── Dashboard static lint ──────────────────────────────────────────────
+  dashboard:
+    name: Dashboard lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install tracking hub deps
+        run: cd tracking && npm install
+
+      - name: Check hub syntax
+        run: node --input-type=module < tracking/hub.js || true
+
+  # ── WASM build (fusion crate) ──────────────────────────────────────────
+  wasm:
+    name: WASM build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable + wasm32 target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-wasm-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build fusion WASM
+        run: cd fusion && wasm-pack build --target web --out-dir pkg
