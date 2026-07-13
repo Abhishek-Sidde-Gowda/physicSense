@@ -1,0 +1,16 @@
+[package]
+name    = "physicsense-native"
+version = "0.1.0"
+edition = "2021"
+description = "PhysicSense native messaging host — WiFi monitor-mode bridge"
+license = "MIT"
+
+[[bin]]
+name = "physicsense-native"
+path = "src/main.rs"
+
+[dependencies]
+anyhow  = "1"
+serde   = { version = "1", features = ["derive"] }
+serde_json = "1"
+# pcap  = "2"   # uncomment on Linux with libpcap-dev installed
